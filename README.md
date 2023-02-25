@@ -1,5 +1,7 @@
 BitAssets - A Digital Assets Sidechain
+
 Bringing “ERC20” tokens and other CryptoFinance to Bitcoin, on its own specialized chain.
+
 https://www.truthcoin.info/blog/bit-assets/
 
 Drivechain (BIPs 300+301)
