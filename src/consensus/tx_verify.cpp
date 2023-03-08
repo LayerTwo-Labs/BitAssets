@@ -168,15 +168,17 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-oversize");
 
 
-    bool fBitAsset = tx.nVersion == TRANSACTION_BITASSET_CREATE_VERSION;
-    std::vector<CTxOut>::const_iterator it;
-    if (fBitAsset && tx.vout.size() >= 2)
-        it = tx.vout.begin() + 2;
-    else
-        it = tx.vout.begin();
+    bool fAssetGenesis = tx.nVersion == TRANSACTION_BITASSET_CREATE_VERSION;
+
+    // BitAsset genesis transactions must have at least 2 outputs
+    if (fAssetGenesis && tx.vout.size() < 2)
+        return state.DoS(10, false, REJECT_INVALID, "bad-txns-asset-gen-vout-size");
 
     // Check for negative or overflow output values
     CAmount nValueOut = 0;
+    std::vector<CTxOut>::const_iterator it;
+    // Skip BitAsset genesis outputs
+    fAssetGenesis ? it = tx.vout.begin() + 2 : it = tx.vout.begin();
     for (; it != tx.vout.end(); it++)
     {
         if (it->nValue < 0)
@@ -221,6 +223,7 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
                          strprintf("%s: inputs missing/spent", __func__));
     }
 
+    uint32_t nAssetIDFound = 0;
     CAmount nValueIn = 0;
     for (unsigned int i = 0; i < tx.vin.size(); ++i) {
         const COutPoint &prevout = tx.vin[i].prevout;
@@ -239,6 +242,11 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
         if (!MoneyRange(coin.out.nValue) || !MoneyRange(nValueIn)) {
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
         }
+
+        if (coin.nAssetID && nAssetIDFound && coin.nAssetID != nAssetIDFound)
+            return state.DoS(10, false, REJECT_INVALID, "bad-txns-inputs-mixed-assets");
+
+        nAssetIDFound = coin.nAssetID;
     }
 
     const CAmount value_out = tx.GetValueOut();
