@@ -4884,22 +4884,25 @@ bool CChainState::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& i
     CAmount amountAssetIn = CAmount(0);
     int nControlN = -1;
     for (const CTransactionRef& tx : block.vtx) {
-        if (!tx->IsCoinBase()) {
-            for (size_t x = 0; x < tx->vin.size(); x++) {
-                bool fBitAsset = false;
-                bool fBitAssetControl = false;
-                uint32_t nAssetID = 0;
-                Coin coin;
-                inputs.SpendCoin(tx->vin[x].prevout, fBitAsset, fBitAssetControl, nAssetID, &coin);
+        if (tx->IsCoinBase())
+            continue;
 
-                if (fBitAsset)
-                    amountAssetIn += coin.out.nValue;
-                if (fBitAssetControl)
-                    nControlN = x;
-            }
+        uint32_t nAssetID = 0;
+
+        for (size_t x = 0; x < tx->vin.size(); x++) {
+            bool fBitAsset = false;
+            bool fBitAssetControl = false;
+            Coin coin;
+            inputs.SpendCoin(tx->vin[x].prevout, fBitAsset, fBitAssetControl, nAssetID, &coin);
+
+            if (fBitAsset)
+                amountAssetIn += coin.out.nValue;
+            if (fBitAssetControl)
+                nControlN = x;
         }
+
         // Pass check = true as every addition may be an overwrite.
-        AddCoins(inputs, *tx, pindex->nHeight, amountAssetIn, nControlN, true);
+        AddCoins(inputs, *tx, pindex->nHeight, nAssetID, amountAssetIn, nControlN, 0, true);
     }
     return true;
 }
