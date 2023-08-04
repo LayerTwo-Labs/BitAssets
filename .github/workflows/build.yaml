@@ -1,0 +1,123 @@
+on: [push]
+
+name: Build
+
+jobs:
+  build-ubuntu-latest:
+    name: Build (Ubuntu Latest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Dependencies (Boost)
+        run: |
+          sudo apt-get install \
+            libboost-chrono-dev \
+            libboost-filesystem-dev \
+            libboost-program-options-dev \
+            libboost-system-dev \
+            libboost-test-dev \
+            libboost-thread-dev
+
+      # Optional
+      - name: Install Dependencies (MiniUPnPc)
+        run: sudo apt-get install libminiupnpc-dev
+
+      # Optional
+      - name: Install Dependencies (Qt5)
+        run: |
+          sudo apt-get install \
+            libprotobuf-dev \
+            libqt5core5a \
+            libqt5dbus5 \
+            libqt5gui5 \
+            qttools5-dev \
+            qttools5-dev-tools \
+            protobuf-compiler
+
+      - name: Install Dependencies (QREncode)
+        run: sudo apt-get install libqrencode-dev
+
+      - name: Install Dependencies (ZMQ)
+        run: sudo apt-get install libzmq3-dev
+
+      - name: Install Dependencies (Required)
+        run: |
+          sudo apt-get install \
+            automake \
+            autotools-dev \
+            bsdmainutils \
+            build-essential \
+            libevent-dev \
+            libssl-dev \
+            libtool \
+            pkg-config \
+            python3
+
+      - name: Install Dependencies (BerkeleyDB)
+        run: |
+          BASEDIR="$PWD"
+          mkdir -p bdb
+          cd bdb
+          wget http://download.oracle.com/berkeley-db/db-4.8.30.tar.gz
+          tar -xf db-4.8.30.tar.gz
+          # preprocess
+          cd db-4.8.30
+          sed -i.old 's/__atomic_compare_exchange/__atomic_compare_exchange_db/' dbinc/atomic.h
+          sed -i.old 's/atomic_init/atomic_init_db/' dbinc/atomic.h mp/mp_region.c mp/mp_mvcc.c mp/mp_fget.c mutex/mut_method.c mutex/mut_tas.c
+          cp -f "${BASEDIR}/depends/config.guess" "${BASEDIR}/depends/config.sub" dist
+          # build & install
+          cd build_unix
+          ../dist/configure \
+            --disable-replication \
+            --disable-shared \
+            --enable-cxx \
+            --with-pic \
+            CXXFLAGS="-std=c++11"
+          make libdb_cxx-4.8.a libdb-4.8.a
+          sudo make install_lib install_include
+          # clean up
+          cd $BASEDIR
+          rm -rf bdb
+        
+      - name: AutoGen
+        run: ./autogen.sh
+      
+      - name: Configure
+        run: |
+          ./configure \
+            BDB_LIBS="-L/usr/local/BerkeleyDB.4.8/lib -ldb_cxx-4.8" \
+            BDB_CFLAGS="-I/usr/local/BerkeleyDB.4.8/include"
+
+      - name: Build
+        run: make -j 2
+
+      - name: 'Upload Artifacts (bitassetsd)'
+        uses: actions/upload-artifact@v2
+        with:
+          name: bitassetsd
+          path: src/bitassetsd
+          if-no-files-found: error
+      
+      - name: 'Upload Artifacts (bitassets-cli)'
+        uses: actions/upload-artifact@v2
+        with:
+          name: bitassets-cli
+          path: src/bitassets-cli
+          if-no-files-found: error
+      
+      - name: 'Upload Artifacts (bitassets-tx)'
+        uses: actions/upload-artifact@v2
+        with:
+          name: bitassets-tx
+          path: src/bitassets-tx
+          if-no-files-found: error
+      
+      - name: 'Upload Artifacts (bitassets-qt)'
+        uses: actions/upload-artifact@v2
+        with:
+          name: bitassets-qt
+          path: src/qt/bitassets-qt
+          if-no-files-found: error
