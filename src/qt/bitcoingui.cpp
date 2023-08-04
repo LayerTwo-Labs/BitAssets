@@ -11,7 +11,6 @@
 #include <qt/guiutil.h>
 #include <qt/hashcalcdialog.h>
 #include <qt/networkstyle.h>
-#include <qt/notificator.h>
 #include <qt/openuridialog.h>
 #include <qt/optionsdialog.h>
 #include <qt/optionsmodel.h>
@@ -127,7 +126,6 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *_platformStyle, const NetworkStyle *
     showBlockExplorerDialogAction(0),
     trayIcon(0),
     trayIconMenu(0),
-    notificator(0),
     rpcConsole(0),
     helpMessageDialog(0),
     prevBlocks(0),
@@ -660,8 +658,6 @@ void BitcoinGUI::createTrayIcon(const NetworkStyle *networkStyle)
     trayIcon->setIcon(networkStyle->getTrayAndWindowIcon());
     trayIcon->hide();
 #endif
-
-    notificator = new Notificator(QApplication::applicationName(), trayIcon, this);
 }
 
 void BitcoinGUI::createTrayIconMenu()
@@ -996,7 +992,6 @@ void BitcoinGUI::message(const QString &title, const QString &message, unsigned 
     QString strTitle = tr("Bitcoin"); // default title
     // Default to information icon
     int nMBoxIcon = QMessageBox::Information;
-    int nNotifyIcon = Notificator::Information;
 
     QString msgType;
 
@@ -1026,11 +1021,9 @@ void BitcoinGUI::message(const QString &title, const QString &message, unsigned 
     // Check for error/warning icon
     if (style & CClientUIInterface::ICON_ERROR) {
         nMBoxIcon = QMessageBox::Critical;
-        nNotifyIcon = Notificator::Critical;
     }
     else if (style & CClientUIInterface::ICON_WARNING) {
         nMBoxIcon = QMessageBox::Warning;
-        nNotifyIcon = Notificator::Warning;
     }
 
     // Display message
@@ -1046,8 +1039,6 @@ void BitcoinGUI::message(const QString &title, const QString &message, unsigned 
         if (ret != nullptr)
             *ret = r == QMessageBox::Ok;
     }
-    else
-        notificator->notify(static_cast<Notificator::Class>(nNotifyIcon), strTitle, message);
 }
 
 void BitcoinGUI::WithdrawalBundleBannerUpdated(QString str)
