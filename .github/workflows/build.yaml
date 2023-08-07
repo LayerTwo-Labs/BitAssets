@@ -6,10 +6,13 @@ jobs:
   build-ubuntu-latest:
     name: Build (Ubuntu Latest)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+
+      - name: Apt update
+        run: sudo apt-get update
 
       - name: Install Dependencies (Boost)
         run: |
